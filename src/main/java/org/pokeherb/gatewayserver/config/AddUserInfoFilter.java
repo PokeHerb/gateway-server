@@ -14,6 +14,7 @@ import reactor.core.publisher.Mono;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class AddUserInfoFilter implements GlobalFilter, Ordered {
@@ -23,6 +24,9 @@ public class AddUserInfoFilter implements GlobalFilter, Ordered {
     private static final String HEADER_ROLES = "X-User-Roles";
     private static final String HEADER_EMAIL = "X-User-Email";
     private static final String HEADER_USER_NAME = "X-User-Name";
+    private static final String HEADER_USER_PHONE = "X-User-Phone";
+    private static final String HEADER_HUB_ID = "X-Hub-Id";
+    private static final String HEADER_VENDOR_ID = "X-Vendor-Id";
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -38,18 +42,24 @@ public class AddUserInfoFilter implements GlobalFilter, Ordered {
                     Jwt jwt = jwtAuth.getToken();
 
                     List<String> roles = extractRoles(jwt);
-                    String name = jwt.getClaimAsString("given_name") +  jwt.getClaimAsString("family_name");
+                    String name = jwt.getClaimAsString("family_name") + jwt.getClaimAsString("given_name");
+                    String phone = Optional.ofNullable(jwt.getClaimAsString("phone_number")).orElse("");
+                    String hubId = Optional.ofNullable(jwt.getClaimAsString("hub_id")).orElse("");
+                    String vendorId = Optional.ofNullable(jwt.getClaimAsString("vendor_id")).orElse("");
                     name = URLEncoder.encode(name, StandardCharsets.UTF_8);
+
                     ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
                             .header(HEADER_USER_ID, jwt.getSubject() != null ? jwt.getSubject() : "")
                             .header(HEADER_USERNAME, jwt.getClaimAsString("preferred_username") != null ? jwt.getClaimAsString("preferred_username") : "")
-                            .header(HEADER_ROLES, String.join(",", roles))
+                            .header(HEADER_ROLES, roles.stream().filter(s -> s.startsWith("ROLE_")).collect(Collectors.joining(",")))
                             .header(HEADER_EMAIL, Objects.requireNonNull(jwt.getClaimAsString("email"), ""))
                             .header(HEADER_USER_NAME, name)
+                            .header(HEADER_USER_PHONE, phone)
+                            .header(HEADER_HUB_ID, hubId)
+                            .header(HEADER_VENDOR_ID, vendorId)
                             .build();
 
                     ServerWebExchange mutatedExchange = exchange.mutate().request(mutatedRequest).build();
-
                     return chain.filter(mutatedExchange);
                 })
                 .switchIfEmpty(chain.filter(exchange))
@@ -60,7 +70,7 @@ public class AddUserInfoFilter implements GlobalFilter, Ordered {
 
     @Override
     public int getOrder() {
-        return Ordered.LOWEST_PRECEDENCE - 5;
+        return Ordered.HIGHEST_PRECEDENCE;
     }
 
     private List<String> extractRoles(Jwt jwt) {
