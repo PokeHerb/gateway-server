@@ -23,4 +23,13 @@ public class SwaggerConfig {
                 .pathsToMatch("/v1/hub/**")
                 .build();
     }
+
+    @Bean
+    public GroupedOpenApi productAPI() {
+        return GroupedOpenApi.builder()
+                .group("product-api")
+                .displayName("PRODUCT API")
+                .pathsToMatch("/v1/product/**")
+                .build();
+    }
 }
