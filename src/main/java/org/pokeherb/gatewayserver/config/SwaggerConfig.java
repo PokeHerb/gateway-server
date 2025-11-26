@@ -32,4 +32,22 @@ public class SwaggerConfig {
                 .pathsToMatch("/v1/product/**")
                 .build();
     }
+
+    @Bean
+    public GroupedOpenApi driverAPI() {
+        return GroupedOpenApi.builder()
+                .group("driver-api")
+                .displayName("DRIVER API")
+                .pathsToMatch("/v1/driver/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi vendorAPI() {
+        return GroupedOpenApi.builder()
+                .group("vendor-api")
+                .displayName("VENDOR API")
+                .pathsToMatch("/v1/vendor/**")
+                .build();
+    }
 }
